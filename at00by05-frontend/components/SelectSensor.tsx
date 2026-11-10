@@ -24,7 +24,7 @@ export const SelectSensor = ({
         {sensors &&
           sensors.map((sensor) => (
             <option key={sensor.sensorId} value={sensor.sensorId}>
-              {`${sensor.sensorName} -#${sensor.sensorId}`}
+              {`${sensor.sensorName} - #${sensor.sensorId}`}
             </option>
           ))}
       </select>
