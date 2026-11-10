@@ -29,8 +29,8 @@ export const saveMeasurement = async (
     const RequiredMeasurementFields = z.object({
       sensorId: z.string(),
       sensorName: z.string(),
-      temperature: z.number(),
-      humidity: z.number(),
+      temperature: z.number().optional(),
+      humidity: z.number().optional(),
       timeStamp: z.number(),
     });
     const body = JSON.parse(event.body as string);

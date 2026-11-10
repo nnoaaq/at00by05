@@ -9,7 +9,9 @@ export const getMeasurements = async () => {
     if (!databaseUrl) {
       throw new Error();
     }
-    const output = await fetch(`${databaseUrl}/measurements`);
+    const output = await fetch(`${databaseUrl}/measurements`, {
+      cache: "no-cache",
+    });
     if (output.ok) return await output.json();
     return []; // PYYNTÖ EPÄONNISTUNUT
   } catch (error) {

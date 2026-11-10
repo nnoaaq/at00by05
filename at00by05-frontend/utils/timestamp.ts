@@ -1,5 +1,5 @@
 export const convertTime = (timestamp: number) => {
-  const dateObj = new Date(timestamp);
+  const dateObj = new Date(timestamp * 1000);
   return dateObj.toLocaleDateString("fi-FI", {
     day: "2-digit",
     month: "2-digit",
