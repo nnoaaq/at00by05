@@ -1,0 +1,63 @@
+org: noajulkunen
+app: at00by05-backend
+service: at00by05-backend
+
+provider:
+  name: aws
+  runtime: nodejs24.x
+  architecture: arm64
+  region: eu-north-1
+  environment:
+    authorizationCode: ${env:AuthorizationCode}
+    measurementsTableName: ${env:MeasurementsTableName}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:BatchWriteItem
+            - dynamodb:Scan
+            - dynamodb:PutItem
+          Resource:
+            - !GetAtt Measurements.Arn
+
+# .env TIEDOSTO KÄYTTÖÖN
+useDotenv: true
+plugins:
+  - serverless-offline
+# TÄMÄN TIEDOSTON MUUTTUJAT
+custom:
+  MeasurementsTable: ${env:MeasurementsTableName}
+
+# LUODAAN DYNAMODB - RESURSSIT
+resources:
+  Resources:
+    Measurements:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.MeasurementsTable}
+        AttributeDefinitions:
+          - AttributeName: sensorId
+            AttributeType: S
+          - AttributeName: timeStamp
+            AttributeType: N
+        KeySchema:
+          - AttributeName: sensorId
+            KeyType: HASH # PARTITION KEY
+          - AttributeName: timeStamp
+            KeyType: RANGE # SORT KEY
+# LUODAAN FUNKTIOT ENDPOINTEILLE
+functions:
+  saveMeasurement:
+    handler: measurement.saveMeasurement
+    events:
+      - httpApi:
+          method: POST
+          path: /measurement/save
+  getMeasurements:
+    handler: measurement.getMeasurements
+    events:
+      - httpApi:
+          method: GET
+          path: /measurements
