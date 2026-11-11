@@ -10,7 +10,7 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
-export const saveMeasurement = async (
+export const saveMeasurements = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
   try {
@@ -39,18 +39,40 @@ export const saveMeasurement = async (
       const RequiredArrayJSONObjects = z.array(RequiredMeasurementFields);
       const measurements = RequiredArrayJSONObjects.parse(body);
       // KENTÄT VARMENNETTU
-      const putRequests = measurements.map((item) => ({
-        PutRequest: {
-          Item: item,
-        },
-      }));
-      await dynamoDb.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [measurementsTableName]: putRequests,
+
+      if (measurements.length > 25) {
+        // AWS BATCHWRITE KESTÄÄ VAIN 25 KERRALLA
+        for (let i = 0; i < measurements.length; i += 25) {
+          const smallBatch = measurements.slice(i, i + 25);
+
+          const putRequests = smallBatch.map((item) => ({
+            PutRequest: {
+              Item: item,
+            },
+          }));
+          console.log("ok:", putRequests);
+          await dynamoDb.send(
+            new BatchWriteCommand({
+              RequestItems: {
+                [measurementsTableName]: putRequests,
+              },
+            }),
+          );
+        }
+      } else {
+        const putRequests = measurements.map((item) => ({
+          PutRequest: {
+            Item: item,
           },
-        }),
-      );
+        }));
+        await dynamoDb.send(
+          new BatchWriteCommand({
+            RequestItems: {
+              [measurementsTableName]: putRequests,
+            },
+          }),
+        );
+      }
       return {
         headers: {
           "content-type": "application/json",
@@ -112,6 +134,63 @@ export const getMeasurements = async (
       },
       statusCode: 200,
       body: JSON.stringify(output.Items),
+    };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+export const saveMeasurement = async (
+  event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> => {
+  try {
+    if (!measurementsTableName || !authorizationCode) {
+      throw new CustomError(400, {
+        message: "Virhe ympäristömuuttujien kanssa.",
+      });
+    }
+    const { headers, body } = event; // POIMITAAN KENTÄT EVENTISTÄ
+    if (!headers.authorization || headers.authorization !== authorizationCode) {
+      throw new CustomError(401, {
+        message: "Luvaton käyttö havaittu.",
+      });
+    }
+    // YKSITTÄISEN MITTAUSTULOKSEN KENTÄT
+    const MeasurementZod = z.object({
+      sensorId: z.string(),
+      sensorName: z.string(),
+      temperature: z.number().optional(),
+      humidity: z.number().optional(),
+      timeStamp: z.number(),
+    });
+    const MeasurementArrayZod = z
+      .union([MeasurementZod, z.array(MeasurementZod)])
+      .transform((value) => (Array.isArray(value) ? value : [value])); // AINA TAULUKKO TÄSTÄ LÄHTIEN
+    const parsedBody = JSON.parse(body as string);
+    const measurements = MeasurementArrayZod.parse(parsedBody);
+    let savedMeasurements = 0;
+    // KÄYDÄÄN LÄPI MEASUREMENTS 25 - LOHKOISSA (AWS BATCHWRITEN MAX)
+    for (let i = 0; i < measurements.length; i += 25) {
+      const batch = measurements.slice(i, i + 25);
+      const putRequests = batch.map((measurement) => ({
+        PutRequest: {
+          Item: measurement,
+        },
+      }));
+      await dynamoDb.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [measurementsTableName]: putRequests,
+          },
+        }),
+      );
+      savedMeasurements += batch.length;
+    }
+    return {
+      statusCode: 201,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ savedMeasurements: savedMeasurements }),
     };
   } catch (error) {
     return handleError(error);
