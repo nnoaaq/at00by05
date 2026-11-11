@@ -1,3 +1,3 @@
 # AT00BY05
 
-## IoT - järjestelmän backend / frontend koodit
+## IoT - järjestelmän frontend koodit
