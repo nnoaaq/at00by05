@@ -18,3 +18,20 @@ export const getMeasurements = async () => {
     return [];
   }
 };
+export const getMeasurementsFromDays = async (
+  from: number,
+  to: number,
+  sensorId: string,
+) => {
+  try {
+    if (!databaseUrl) throw new Error();
+    if (!from || !to || !sensorId) return [];
+    const output = await fetch(
+      `${databaseUrl}/measurements/range?from=${from}&to=${to}&sensorId=${sensorId}`,
+    );
+    if (output.ok) return await output.json();
+    return [];
+  } catch (error) {
+    return [];
+  }
+};

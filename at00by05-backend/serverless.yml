@@ -18,6 +18,7 @@ provider:
             - dynamodb:BatchWriteItem
             - dynamodb:Scan
             - dynamodb:PutItem
+            - dynamoDb:Query
           Resource:
             - !GetAtt Measurements.Arn
 
@@ -67,3 +68,9 @@ functions:
       - httpApi:
           method: POST
           path: /measurements/save
+  getMeasurementsFromDays:
+    handler: measurement.getMeasurementsFromDays
+    events:
+      - httpApi:
+          method: GET
+          path: /measurements/range

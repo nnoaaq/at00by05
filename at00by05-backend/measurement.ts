@@ -10,6 +10,7 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
+import fr from "zod/v4/locales/fr.cjs";
 export const saveMeasurements = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
@@ -191,6 +192,44 @@ export const saveMeasurement = async (
         "content-type": "application/json",
       },
       body: JSON.stringify({ savedMeasurements: savedMeasurements }),
+    };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getMeasurementsFromDays = async (
+  event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> => {
+  try {
+    // HAETAAN QUERY-PARAMETRIT
+    const { from, to, sensorId } = event.queryStringParameters || {};
+    if (!from || !to || !sensorId) {
+      throw new CustomError(400, {
+        message: "Vaadittavat QueryParametrit from, to ja sensorId.",
+      });
+    }
+    const measurements = await dynamoDb.send(
+      new QueryCommand({
+        TableName: measurementsTableName,
+        KeyConditionExpression:
+          "sensorId = :sensorId AND #ts BETWEEN :from AND :to",
+        ExpressionAttributeNames: {
+          "#ts": "timeStamp",
+        },
+        ExpressionAttributeValues: {
+          ":sensorId": sensorId,
+          ":from": Number(from),
+          ":to": Number(to),
+        },
+      }),
+    );
+    return {
+      statusCode: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(measurements?.Items),
     };
   } catch (error) {
     return handleError(error);
