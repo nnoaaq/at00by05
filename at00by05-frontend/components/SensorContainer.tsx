@@ -57,7 +57,9 @@ export const SensorContainer = ({
     };
     fetch();
   }, [selectedDays]);
-
+  useEffect(() => {
+    setSelectedDays(undefined);
+  }, [selectedSensor]);
   return (
     <div className="flex flex-col gap-4">
       <SelectSensor
@@ -65,6 +67,7 @@ export const SensorContainer = ({
         changeSelectedSensor={(sensorId: string) => setSelectedSensor(sensorId)}
       />
       <DatePickerWithRange
+        reset={selectedSensor}
         updateSelectedDays={(days) => {
           setSelectedDays(days);
         }}

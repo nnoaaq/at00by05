@@ -18,11 +18,15 @@ import {
 
 export function DatePickerWithRange({
   updateSelectedDays,
+  reset,
 }: {
   updateSelectedDays: (days: { from: number; to: number }) => void;
+  reset: string | number;
 }) {
   const [date, setDate] = React.useState<DateRange | undefined>(undefined);
-
+  React.useEffect(() => {
+    setDate(undefined);
+  }, [reset]);
   return (
     <Field>
       <FieldLabel
