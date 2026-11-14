@@ -1,4 +1,5 @@
 import { getMeasurements } from "@/api/getMeasurements";
+import { getSensors } from "@/api/getSensors";
 import { ChartComponent } from "@/components/Chart";
 import { SensorContainer } from "@/components/SensorContainer";
 import { MeasurementType } from "@/types/measurement";
@@ -22,20 +23,7 @@ export default async function Home() {
   }
   // INITIALMEASUREMENTS ON NYT LAJITELTU MAPPIIN
 
-  // POIMITAAN SENSORIT OMAKSI LISTAKSI
-  // [
-  //   { sensorId: 'AABBCC', sensorName: 'TESTI_YKSIN' },
-  //   { sensorId: 'PetriPico', sensorName: 'Pico_2_w_DHT' }
-  // ]
-
-  const sensors = Array.from(measurementsMap.entries()).map(
-    ([sensorId, sensorMeasurements]) => {
-      return {
-        sensorId: sensorId,
-        sensorName: sensorMeasurements[0]?.sensorName ?? "",
-      };
-    },
-  );
+  const sensors = await getSensors();
 
   return (
     <div className="border border-zinc-600 m-2 rounded-lg p-2 shadow-xs bg-zinc-800">

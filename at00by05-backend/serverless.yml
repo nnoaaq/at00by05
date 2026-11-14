@@ -10,6 +10,7 @@ provider:
   environment:
     authorizationCode: ${env:AuthorizationCode}
     measurementsTableName: ${env:MeasurementsTableName}
+    sensorsTableName: ${env:SensorsTableName}
   iam:
     role:
       statements:
@@ -18,9 +19,11 @@ provider:
             - dynamodb:BatchWriteItem
             - dynamodb:Scan
             - dynamodb:PutItem
-            - dynamoDb:Query
+            - dynamodb:Query
+            - dynamodb:UpdateItem
           Resource:
             - !GetAtt Measurements.Arn
+            - !GetAtt Sensors.Arn
 
 # .env TIEDOSTO KÄYTTÖÖN
 useDotenv: true
@@ -29,10 +32,22 @@ plugins:
 # TÄMÄN TIEDOSTON MUUTTUJAT
 custom:
   MeasurementsTable: ${env:MeasurementsTableName}
+  SensorsTable: ${env:SensorsTableName}
 
 # LUODAAN DYNAMODB - RESURSSIT
 resources:
   Resources:
+    Sensors:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.SensorsTable}
+        AttributeDefinitions:
+          - AttributeName: sensorId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: sensorId
+            KeyType: HASH
     Measurements:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -74,3 +89,9 @@ functions:
       - httpApi:
           method: GET
           path: /measurements/range
+  getSensors:
+    handler: sensors.getSensors
+    events:
+      - httpApi:
+          method: GET
+          path: /sensors

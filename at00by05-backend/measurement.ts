@@ -2,6 +2,7 @@ import { documentClient as dynamoDb } from "./client"; // LUOTU DOCUMENTCLIENT
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda"; // HTTP-PYYNTÖJEN TYYPIT
 const authorizationCode = process.env.authorizationCode; // .ENV-TIEDOSTOSTA
 const measurementsTableName = process.env.measurementsTableName;
+const sensorsTableName = process.env.sensorsTableName;
 import * as z from "zod"; // VALIDOINTI-KIRJASTO
 import { CustomError, handleError } from "./error";
 import {
@@ -9,8 +10,8 @@ import {
   PutCommand,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import fr from "zod/v4/locales/fr.cjs";
 export const saveMeasurements = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
@@ -144,7 +145,7 @@ export const saveMeasurement = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
   try {
-    if (!measurementsTableName || !authorizationCode) {
+    if (!measurementsTableName || !authorizationCode || !sensorsTableName) {
       throw new CustomError(400, {
         message: "Virhe ympäristömuuttujien kanssa.",
       });
@@ -168,6 +169,21 @@ export const saveMeasurement = async (
       .transform((value) => (Array.isArray(value) ? value : [value])); // AINA TAULUKKO TÄSTÄ LÄHTIEN
     const parsedBody = JSON.parse(body as string);
     const measurements = MeasurementArrayZod.parse(parsedBody);
+    // TALLENNETAAN SENSORS SENSORIT TAULUUN
+    const { sensorId, sensorName } = measurements[0];
+    await dynamoDb.send(
+      new UpdateCommand({
+        TableName: sensorsTableName,
+        Key: {
+          sensorId,
+        },
+        UpdateExpression: "SET sensorName =:sensorName",
+        ExpressionAttributeValues: {
+          ":sensorName": sensorName,
+        },
+      }),
+    );
+
     let savedMeasurements = 0;
     // KÄYDÄÄN LÄPI MEASUREMENTS 25 - LOHKOISSA (AWS BATCHWRITEN MAX)
     for (let i = 0; i < measurements.length; i += 25) {
@@ -186,6 +202,8 @@ export const saveMeasurement = async (
       );
       savedMeasurements += batch.length;
     }
+    // MITTAUSTULOKSET TALLENNETTU MEASUREMENTS TAULUUN
+
     return {
       statusCode: 201,
       headers: {
